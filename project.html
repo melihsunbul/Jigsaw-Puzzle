@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <title>Jigsaw Puzzle</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400&display=swap" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <style>
+        body {
+            font-family: roboto;
+        }
+
+        #container {
+            display: flex;
+            justify-content: space-around;
+        }
+
+        #picture {
+            border: 1px solid black;
+            background-image: url(./puzzleImage.jpg);
+            width: 300px;
+            height: 300px;
+            position: relative;
+        }
+
+        #pieceContainer {
+            width: 308px;
+            height: 308px;
+            border: 1px solid black;
+            float: left;
+            text-align: center;
+            background-color: rgb(128, 0, 0);
+            position: relative;
+        }
+
+        #puzzleContainer {
+            width: 308px;
+            height: 308px;
+
+            float: right;
+        }
+
+        #btnHint {
+
+            border: 1px solid black;
+            font-size: 20px;
+            border-radius: 5px;
+            padding: 5px;
+
+
+            position: absolute;
+            top: 330px;
+            left: 100px;
+            width: 100px;
+            height: 40px;
+            background-color: #FF9;
+
+        }
+
+        .piece {
+            width: 100px;
+            height: 100px;
+            border: 1px solid white;
+            float: left;
+            background-image: url(./puzzleImage.jpg);
+            background-repeat: no-repeat;
+
+
+            display: flex;
+            align-items: flex-start;
+
+        }
+
+        .availableSpace {
+            border: 1px solid black;
+
+            align-items: flex-end;
+        }
+
+        #pieceOrder {
+
+            opacity: 0.5;
+            background-color: black;
+            color: white;
+            visibility: hidden;
+        }
+
+        #placeOrder {
+            opacity: 0.5;
+            background-color: black;
+            color: white;
+            visibility: hidden;
+        }
+
+        h1 {
+            display: none;
+            position: fixed;
+            left: 100px;
+            top: 100px;
+            opacity: 0.5;
+            background-color: black;
+            color: white;
+            font-size: 150px;
+            z-index: 55;
+        }
+
+        h2 {
+            text-align: center;
+            font-weight: 900;
+        }
+
+        button:hover {
+            cursor: pointer;
+        }
+
+        .pieceBorder {
+            border: 1px solid yellow;
+        }
+    </style>
+    <script>
+
+        $(document).ready(function () {
+            $("body").bind('click', function (e) {
+                return;
+            })
+
+
+            $("button").mouseenter(function (e) {
+                $(this).css("background", "#F99");
+
+            })
+            $("button").mouseleave(function (e) {
+                $(this).css("background", "#FF9");
+            })
+
+
+            // these arrays was created for moving back puzzle pieces to their original pos. correctly
+            var l = new Array(10).fill(0);
+            var t = new Array(10).fill(0);
+
+            var pieces = createPieces(true);
+            $("#puzzleContainer").html(pieces);
+
+            var pieces = $("#puzzleContainer div");
+            pieces.each(function () {
+                var leftPosition = Math.floor(Math.random() * 201) + "px";
+                var topPosition = Math.floor(Math.random() * 201) + "px";
+                l[$(this).data("order") + 1] = leftPosition;
+                t[$(this).data("order") + 1] = topPosition;
+                $(this).addClass("availablePiece")
+                    .css({
+                        position: "absolute",
+                        left: leftPosition,
+                        top: topPosition
+                    })
+                $("#pieceContainer").append($(this));
+            });
+            var empty = createPieces(false);
+            $("#puzzleContainer").html(empty);
+            puzzleOperations();
+
+            // button operations
+            var btn = 0;
+            $("#btnHint").click(function () {
+                btn++;
+
+                if (btn == 1) {
+                    $(`.piece span`).css("visibility", "visible");
+                }
+                else {
+                    $(`.piece span`).css("visibility", "hidden");
+                }
+                if (btn === 2)
+                    btn = 0;
+            });
+
+            function createPieces(withImage) {
+                var rows = 3, columns = 3;
+                var pieces = "";
+                for (var i = 0, top = 0, order = 0; i < rows; i++, top -= 100) {
+                    for (var j = 0, left = 0; j < columns; j++, left -= 100, order++) {
+                        //creates puzzle pieces with background image
+                        if (withImage) {
+                            pieces += "<div style='background-position:" + left + "px " + top + "px;' class='piece' data-order=" + order + "><span id='pieceOrder'>" + (order + 1) + "</span></div>";
+                        }
+                        //creates puzzle container
+                        else {
+                            pieces += "<div style='background-image:none;' class='piece availableSpace'><span id='placeOrder'>" + (order + 1) + "</span></div>";
+                        }
+                    }
+                }
+                return pieces;
+            }
+            function checkIfPuzzleSolved() {
+                if ($("#puzzleContainer .droppedPiece").length != 9) {
+                    //there is not enough piece to complete puzzle
+                    return false;
+                }
+                for (var k = 0; k < 9; k++) {
+
+                    var item = $("#puzzleContainer .droppedPiece:eq(" + k + ")");
+                    var order = item.data("order");
+                    if (k != order) {
+                        //there is at least one mismatch
+                        return false;
+                    }
+                }
+                // if puzzle solved correctly
+                $("#gameover").fadeIn(1500, function () {
+                    $("#gameover").css("display", "inherit");
+                }).delay(500).fadeOut(1000);
+                $(`.piece span`).css("visibility", "hidden");
+                $("#btnHint").off();
+                return true;
+            }
+            // all selection and moving operations of puzzle pieces 
+            var swipePiece = false;
+            function puzzleOperations() {
+                var temp, temp2;
+                $('.availablePiece').on('click', function (e) {
+                    e.preventDefault();
+                    temp = $(this);
+                    if (!$(this).hasClass("droppedPiece")) {
+                        temp2 = $(this);
+                        swipePiece = true;
+                        $(this).css("border", "1px solid yellow");
+                        $(".availablePiece").not(this).css("border", "1px solid white");
+                    }
+                });
+
+                $('.availableSpace').on('click', function (e) {
+                    var droppedOn = $(this);
+                    //to prevent double click problems
+                    if (e.originalEvent.detail > 1) {
+                        return;
+                    }
+                    e.preventDefault();
+                    var availableElement = temp;
+                    var availableElement2 = temp2;
+
+                    if (!droppedOn.hasClass("piecePresent")) {
+                    // adding pieces to puzzle container
+                        droppedOn.addClass("piecePresent");
+                        $(availableElement).addClass("droppedPiece");
+                        
+
+                        $(availableElement).fadeOut(400, function () {
+
+                            $(availableElement).css({
+                                top: 0,
+                                left: 0,
+                                position: "relative",
+                                border: "",
+                            }).fadeIn(0).appendTo(droppedOn);
+                            droppedOn.children("span").css("display", "none");
+                            checkIfPuzzleSolved();
+                        });
+
+                        swipePiece = false;
+                    } else {
+                        // removing pieces from puzzle container
+                        droppedOn.removeClass("piecePresent");
+                        $(availableElement).fadeOut(0, function () {
+                            $(availableElement).removeClass("droppedPiece")
+                                .css({
+                                    top: t[$(availableElement).data("order") + 1],
+                                    left: l[$(availableElement).data("order") + 1],
+                                    position: "absolute",
+                                    border: ""
+                                }).fadeIn(400).appendTo("#pieceContainer");
+                            droppedOn.children("span").css("display", "inline-block");
+                        });
+                    }
+                    if (swipePiece) {
+                        droppedOn.addClass("piecePresent");
+                        $(availableElement2).addClass("droppedPiece");
+
+                        $(availableElement2).fadeOut(400, function () {
+
+                            $(availableElement2).css({
+                                top: 0,
+                                left: 0,
+                                position: "relative",
+                                border: "",
+                            }).fadeIn(0).appendTo(droppedOn);
+                            droppedOn.children("span").css("display", "none");
+                            checkIfPuzzleSolved();
+                        });
+
+                      
+                        swipePiece=false;
+                    }
+
+                }
+                );
+
+            }
+        });
+
+    </script>
+</head>
+
+<body>
+    <h1 id="gameover">Congratulations</h1>
+    <div id="container">
+        <div>
+            <h2>Original Image</h2>
+            <div id="picture">
+
+            </div>
+        </div>
+        <div>
+            <h2>Pieces</h2>
+            <div id="pieceContainer">
+                <button id="btnHint">Hint</button>
+
+            </div>
+        </div>
+        <div>
+            <h2>Puzzle</h2>
+            <div id="puzzleContainer"></div>
+        </div>
+
+    </div>
+</body>
+
+</html>
